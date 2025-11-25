@@ -8,66 +8,106 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.Arrays;
-import java.util.HashSet;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 public class SentimentBolt extends BaseRichBolt {
 
     private OutputCollector collector;
+    private transient HttpClient httpClient;
+    private transient ObjectMapper objectMapper;
 
-    private Set<String> positiveWords;
-    private Set<String> negativeWords;
+    // Change to localhost if running in local mode for testing, should probably
+    // be in an env file.
+    private static final String SENTIMENT_URL = "http://localhost:5500/classify";
 
     @Override
     public void prepare(Map<String, Object> topoConf, TopologyContext context,
                         OutputCollector collector) {
         this.collector = collector;
-
-        positiveWords = new HashSet<String>(Arrays.asList(
-                "love", "awesome", "good", "great", "wholesome", "fun", "amazing"
-        ));
-
-        negativeWords = new HashSet<String>(Arrays.asList(
-                "hate", "bad", "terrible", "boring", "awful"
-        ));
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
+        this.objectMapper = new ObjectMapper();
     }
 
     @Override
     public void execute(Tuple input) {
         String message = input.getStringByField("message");
-        String lower = message.toLowerCase();
 
-        int score = 0;
+        try {
+            Map<String, String> body = new HashMap<>();
+            body.put("text", message);
+            String jsonBody = objectMapper.writeValueAsString(body);
 
-        for (String word : positiveWords) {
-            if (lower.contains(word)) {
-                score++;
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(SENTIMENT_URL))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                // Log and fail the tuple so Storm can retry/backpressure
+                collector.reportError(new RuntimeException("Sentiment API returned status " + response.statusCode()
+                        + " body: " + response.body()));
+                collector.fail(input);
+                return;
             }
-        }
-
-        for (String word : negativeWords) {
-            if (lower.contains(word)) {
-                score--;
+            JsonNode root = objectMapper.readTree(response.body());
+            JsonNode resultNode = root.path("result");
+            if (resultNode.isMissingNode() || !resultNode.isObject()) {
+                collector.reportError(new RuntimeException("Invalid sentiment response: " + response.body()));
+                collector.fail(input);
+                return;
             }
-        }
 
-        String label;
-        if (score > 0) {
-            label = "positive";
-        } else if (score < 0) {
-            label = "negative";
-        } else {
-            label = "neutral";
-        }
+            Map<String, Double> scores = new HashMap<>();
+            String topLabel = null;
+            double topScore = Double.NEGATIVE_INFINITY;
 
-        collector.emit(new Values(message, label, score));
-        collector.ack(input);
+            Iterator<Map.Entry<String, JsonNode>> fields = resultNode.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> entry = fields.next();
+                String label = entry.getKey();
+                double score = entry.getValue().asDouble();
+
+                scores.put(label, score);
+
+                if (score > topScore) {
+                    topScore = score;
+                    topLabel = label;
+                }
+            }
+
+            // Emit:
+            //  - original message
+            //  - full map of label->score
+            //  - top label according to the model
+            //  - top score
+            collector.emit(new Values(message, scores, topLabel, topScore));
+            collector.ack(input);
+
+        } catch (Exception e) {
+            collector.reportError(e);
+            collector.fail(input);
+        }
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("message", "twitch/sentiment", "score"));
+        declarer.declare(new Fields("message", "scores", "topLabel", "topScore"));
     }
 }

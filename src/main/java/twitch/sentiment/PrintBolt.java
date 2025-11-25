@@ -19,11 +19,13 @@ public class PrintBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple input) {
         String message = input.getStringByField("message");
-        String sentiment = input.getStringByField("twitch/sentiment");
-        int score = input.getIntegerByField("score");
+        @SuppressWarnings("unchecked")
+        Map<String, Double> scores = (Map<String, Double>) input.getValueByField("scores");
+        String topLabel = input.getStringByField("topLabel");
+        double topScore = input.getDoubleByField("topScore");
 
-        System.out.printf("Twitch message: \"%s\" | sentiment=%s | score=%d%n",
-                message, sentiment, score);
+        System.out.printf(">>> \"%s\" -> top=%s (%.3f) all=%s%n",
+                message, topLabel, topScore, scores.toString());
     }
 
     @Override

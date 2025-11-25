@@ -27,3 +27,16 @@ services:
       - nimbus
       - zookeeper
     restart: always
+
+  flask-service:
+    build:
+      context: ./flask-service
+        # Might need to uncomment this on other platforms? I'm on an m1 mac
+    platform: linux/amd64
+    container_name: flask-service
+    restart: always
+    ports:
+      - "5500:5500"
+    depends_on:
+      - nimbus
+      - supervisor
