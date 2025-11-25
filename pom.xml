@@ -25,19 +25,13 @@
             <groupId>org.apache.storm</groupId>
             <artifactId>storm-core</artifactId>
             <version>2.6.1</version>
-            <scope>provided</scope>
+<!--            <scope>provided</scope>-->
         </dependency>
 
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>42.7.3</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.17.1</version>
         </dependency>
 
         <!-- Optional: logging API -->
@@ -102,7 +96,22 @@
                                         <exclude>**</exclude>
                                     </excludes>
                                 </filter>
+
+                                <!-- NEW: exclude all Jackson from the shaded jar -->
+                                <filter>
+                                    <artifact>com.fasterxml.jackson.core:jackson-databind</artifact>
+                                    <excludes><exclude>**</exclude></excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>com.fasterxml.jackson.core:jackson-core</artifact>
+                                    <excludes><exclude>**</exclude></excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>com.fasterxml.jackson.core:jackson-annotations</artifact>
+                                    <excludes><exclude>**</exclude></excludes>
+                                </filter>
                             </filters>
+
 
                             <!-- Shade everything ELSE -->
                             <transformers>

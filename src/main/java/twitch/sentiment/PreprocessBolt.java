@@ -76,7 +76,9 @@ public class PreprocessBolt extends BaseRichBolt {
 
     @Override
     public void execute(Tuple input) {
-        String raw = input.getStringByField("message");
+        String channel = input.getStringByField("channel");
+        String originalMessage = input.getStringByField("original_message");
+        String raw = input.getStringByField("original_message");
         // Encode emotes as simple emotions
         String emoteReplaced = replaceEmotes(raw);
 
@@ -89,7 +91,7 @@ public class PreprocessBolt extends BaseRichBolt {
         // Extras that tripped me up as I was testing
         String cleaned = normalized.replaceAll("[^\\p{L}\\p{N}\\p{P}\\p{Z}]", "");
 
-        collector.emit(new Values(cleaned));
+        collector.emit(new Values(channel, originalMessage, cleaned));
         collector.ack(input);
     }
 
@@ -109,6 +111,6 @@ public class PreprocessBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("message"));
+        declarer.declare(new Fields("channel", "original_message", "cleaned_message"));
     }
 }

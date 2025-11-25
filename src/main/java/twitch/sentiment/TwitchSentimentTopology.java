@@ -19,7 +19,7 @@ public class TwitchSentimentTopology {
         builder.setBolt("sentiment-bolt", new SentimentBolt())
                 .shuffleGrouping("preprocess-bolt");
 
-        builder.setBolt("print-bolt", new PrintBolt())
+        builder.setBolt("db-sink-bolt", new PostgresBolt(), 1)
                 .shuffleGrouping("sentiment-bolt");
 
         Config config = new Config();

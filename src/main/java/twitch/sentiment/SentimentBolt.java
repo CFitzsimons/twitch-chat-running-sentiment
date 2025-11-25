@@ -43,7 +43,9 @@ public class SentimentBolt extends BaseRichBolt {
 
     @Override
     public void execute(Tuple input) {
-        String message = input.getStringByField("message");
+        String channel = input.getStringByField("channel");
+        String originalMessage = input.getStringByField("original_message");
+        String message = input.getStringByField("cleaned_message");
 
         try {
             Map<String, String> body = new HashMap<>();
@@ -93,11 +95,20 @@ public class SentimentBolt extends BaseRichBolt {
             }
 
             // Emit:
+            //  - twitch channel
             //  - original message
+            //  - cleaned message
             //  - full map of label->score
             //  - top label according to the model
             //  - top score
-            collector.emit(new Values(message, scores, topLabel, topScore));
+            collector.emit(new Values(
+                    channel,
+                    originalMessage,
+                    message,
+                    scores,
+                    topLabel,
+                    topScore
+            ));
             collector.ack(input);
 
         } catch (Exception e) {
@@ -108,6 +119,6 @@ public class SentimentBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("message", "scores", "topLabel", "topScore"));
+        declarer.declare(new Fields("channel", "original_message", "cleaned_message", "scores", "topLabel", "topScore"));
     }
 }

@@ -61,10 +61,11 @@ public class TwitchMessageSpout extends BaseRichSpout {
 
     @Override
     public void nextTuple() {
+        String channel = "TestChannel";
         String msg = messyMessages[index];
         index = (index + 1) % messyMessages.length;
 
-        collector.emit(new Values(msg));
+        collector.emit(new Values(channel, msg));
 
         // slow it down a bit
         try {
@@ -75,6 +76,6 @@ public class TwitchMessageSpout extends BaseRichSpout {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("message"));
+        declarer.declare(new Fields("channel", "original_message"));
     }
 }
