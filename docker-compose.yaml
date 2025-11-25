@@ -40,3 +40,16 @@ services:
     depends_on:
       - nimbus
       - supervisor
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: twitch
+      POSTGRES_USER: twitch
+      POSTGRES_PASSWORD: twitch
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
