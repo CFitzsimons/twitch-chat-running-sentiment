@@ -18,11 +18,11 @@ public class TwitchMessageSpout extends BaseRichSpout {
     private SpoutOutputCollector collector;
 
     private String twitchHost = "irc.chat.twitch.tv";
-    private int twitchPort = 6667; // plain IRC. You can switch to TLS later if you want.
+    private int twitchPort = 6667;
 
     private String username;
     private String oauthToken;
-    private String channel; // without '#'
+    private String channel;
 
     private transient Socket socket;
     private transient BufferedReader reader;
@@ -68,13 +68,11 @@ public class TwitchMessageSpout extends BaseRichSpout {
 
                 String line;
                 while (running && (line = reader.readLine()) != null) {
-                    // Handle PING/PONG to keep connection alive
                     if (line.startsWith("PING")) {
                         sendRaw(line.replace("PING", "PONG"));
                         continue;
                     }
 
-                    // We only care about PRIVMSG (chat messages)
                     if (line.contains(" PRIVMSG ")) {
                         ChatMessage msg = parsePrivMsg(line);
                         if (msg != null) {
@@ -104,11 +102,8 @@ public class TwitchMessageSpout extends BaseRichSpout {
         reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"));
         writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"));
 
-        // Twitch IRC login sequence
-        // oauthToken must look like: oauth:xxxxx
         sendRaw("PASS " + oauthToken);
         sendRaw("NICK " + username);
-        // Request tags (optional, but useful if you want more metadata later)
         sendRaw("CAP REQ :twitch.tv/tags twitch.tv/commands twitch.tv/membership");
         sendRaw("JOIN #" + channel.toLowerCase());
 
@@ -122,10 +117,6 @@ public class TwitchMessageSpout extends BaseRichSpout {
     }
 
     private ChatMessage parsePrivMsg(String line) {
-        // Example (simplified):
-        // @tags... :username!user@user.tmi.twitch.tv PRIVMSG #channelname :this is the message
-
-        // Extract channel
         int privmsgIndex = line.indexOf(" PRIVMSG ");
         if (privmsgIndex == -1) {
             return null;
@@ -136,12 +127,10 @@ public class TwitchMessageSpout extends BaseRichSpout {
         if (channelEnd == -1) {
             return null;
         }
-        String channelToken = line.substring(channelStart, channelEnd); // e.g. "#somechannel"
+        String channelToken = line.substring(channelStart, channelEnd);
         String channelName = channelToken.startsWith("#")
                 ? channelToken.substring(1)
                 : channelToken;
-
-        // Message text is after the second ':' in the line
         int firstColon = line.indexOf(':');
         if (firstColon == -1) {
             return null;
@@ -181,10 +170,8 @@ public class TwitchMessageSpout extends BaseRichSpout {
     public void nextTuple() {
         ChatMessage msg = messageQueue.poll();
         if (msg != null) {
-            // Emit fields expected by the rest of your topology
             collector.emit(new Values(msg.channel, msg.message));
         } else {
-            // Avoid tight spin when there's nothing to emit
             sleepQuietly(10);
         }
     }
@@ -200,17 +187,16 @@ public class TwitchMessageSpout extends BaseRichSpout {
 
     @Override
     public void ack(Object msgId) {
-        // No special tracking for now
+        // Nop
     }
 
     @Override
     public void fail(Object msgId) {
-        // You could re-enqueue on failure if you add message IDs
+        // nop
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        // Downstream expects these:
         declarer.declare(new Fields("channel", "original_message"));
     }
 }
