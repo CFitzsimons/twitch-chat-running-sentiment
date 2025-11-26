@@ -25,6 +25,12 @@ public class TwitchSentimentTopology {
         Config config = new Config();
         config.setDebug(true);
 
+        // You can hardcode for now or read from env:
+        config.put("twitch.username", "Yulfy");
+        config.put("twitch.oauthToken", "oauth:INSERT_TOKEN"); // e.g. "oauth:abcd..."
+        config.put("twitch.channel", "ludwig"); // without '#'f
+        config.setDebug(true);
+
         if (args != null && args.length > 0) {
             // Cluster mode: submit to Nimbus
             config.setNumWorkers(1);
