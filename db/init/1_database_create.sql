@@ -1,3 +1,13 @@
+CREATE DATABASE twitch;
+CREATE USER twitch WITH ENCRYPTED PASSWORD 'twitch';
+GRANT ALL PRIVILEGES ON DATABASE twitch TO twitch;
+
+CREATE DATABASE superset;
+CREATE USER superset WITH ENCRYPTED PASSWORD 'superset';
+GRANT ALL PRIVILEGES ON DATABASE superset TO superset;
+
+\connect twitch;
+
 CREATE TABLE
   IF NOT EXISTS message_sentiment (
     id BIGSERIAL PRIMARY KEY,

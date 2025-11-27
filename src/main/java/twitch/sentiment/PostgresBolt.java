@@ -1,6 +1,6 @@
 package twitch.sentiment;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -18,13 +18,13 @@ public class PostgresBolt extends BaseRichBolt {
     private OutputCollector collector;
     private Connection connection;
     private PreparedStatement insertStmt;
-    private ObjectMapper objectMapper;
+    private Gson gson;
 
     @Override
     @SuppressWarnings("rawtypes")
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
-        this.objectMapper = new ObjectMapper();
+        this.gson = new Gson();
 
         try {
             Class.forName("org.postgresql.Driver");
@@ -33,7 +33,7 @@ public class PostgresBolt extends BaseRichBolt {
             String url = (String) stormConf.getOrDefault(
                     "pg.url",
                     // Update to localhost if running in local mode
-                    "jdbc:postgresql://localhost:5432/twitch"
+                    "jdbc:postgresql://postgres:5432/twitch"
             );
             String user = (String) stormConf.getOrDefault("pg.user", "twitch");
             String password = (String) stormConf.getOrDefault("pg.password", "twitch");
@@ -50,7 +50,7 @@ public class PostgresBolt extends BaseRichBolt {
             insertStmt = connection.prepareStatement(sql);
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize PostgresSinkBolt", e);
+            throw new RuntimeException("Failed to initialize PostgresBolt", e);
         }
     }
 
@@ -67,7 +67,8 @@ public class PostgresBolt extends BaseRichBolt {
             Map<String, Double> scores =
                     (Map<String, Double>) input.getValueByField("scores");
 
-            String scoresJson = objectMapper.writeValueAsString(scores);
+            // Convert scores map to JSON for the jsonb column
+            String scoresJson = gson.toJson(scores);
 
             insertStmt.setString(1, channel);
             insertStmt.setString(2, originalMessage);

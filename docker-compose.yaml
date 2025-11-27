@@ -10,6 +10,7 @@ services:
     command: storm nimbus
     depends_on:
       - zookeeper
+      - postgres # for this example, just wait for postgres so the psql bolt can use it
     links:
       - zookeeper
     restart: always
@@ -45,11 +46,48 @@ services:
     container_name: postgres
     restart: always
     environment:
-      POSTGRES_DB: twitch
       POSTGRES_USER: twitch
       POSTGRES_PASSWORD: twitch
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U twitch"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - "5432:5432"
     volumes:
       - ./db/data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
+  superset:
+    image: apache/superset:latest-dev
+    container_name: superset
+    user: "${UID:-1000}:${GID:-1000}"
+    restart: always
+    ports:
+      - "8088:8088"
+    environment:
+      - SUPERSET_SECRET_KEY=twitch-sentiment
+      # Use a real metadata DB in Postgres, not SQLite
+      - SUPERSET_DATABASE_URI=postgresql+psycopg2://superset:superset@postgres:5432/superset
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379        # internal Redis port, not 6380
+      # Belt-and-braces: install psycopg2-binary even if the image already has it
+      - EXTRA_PIP_PACKAGES=psycopg2-binary
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - superset_home:/app/superset_home
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: always
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+volumes:
+  redis_data:
+  superset_home:

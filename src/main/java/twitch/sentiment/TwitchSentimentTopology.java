@@ -9,12 +9,16 @@ public class TwitchSentimentTopology {
 
     public static void main(String[] args) throws Exception {
         TopologyBuilder builder = new TopologyBuilder();
+        builder.setSpout("channel-1", new TwitchMessageSpout("cdawg"));
+        builder.setSpout("channel-2", new TwitchMessageSpout("ironmouse"));
+        builder.setSpout("channel-3", new TwitchMessageSpout("piratesoftware"));
+        builder.setSpout("channel-4", new TwitchMessageSpout("pestily"));
 
-        builder.setSpout("twitch-spout", new TwitchMessageSpout());
-
-        // NEW: preprocess before sentiment
         builder.setBolt("preprocess-bolt", new PreprocessBolt())
-                .shuffleGrouping("twitch-spout");
+                .shuffleGrouping("channel-1")
+                .shuffleGrouping("channel-2")
+                .shuffleGrouping("channel-3")
+                .shuffleGrouping("channel-4");
 
         builder.setBolt("sentiment-bolt", new SentimentBolt())
                 .shuffleGrouping("preprocess-bolt");
@@ -25,22 +29,17 @@ public class TwitchSentimentTopology {
         Config config = new Config();
         config.setDebug(true);
 
-        // You can hardcode for now or read from env:
         config.put("twitch.username", "Yulfy");
-        config.put("twitch.oauthToken", "oauth:INSERT_TOKEN"); // e.g. "oauth:abcd..."
-        config.put("twitch.channel", "ludwig"); // without '#'f
+        config.put("twitch.oauthToken", "oauth:REPLACE_TOKEN");
         config.setDebug(true);
 
         if (args != null && args.length > 0) {
-            // Cluster mode: submit to Nimbus
             config.setNumWorkers(1);
             StormSubmitter.submitTopology(args[0], config, builder.createTopology());
         } else {
-            // Local mode: run inside IntelliJ
             LocalCluster cluster = new LocalCluster();
             cluster.submitTopology("twitch-sentiment-topology", config, builder.createTopology());
 
-            // run for a minute then stop
             Thread.sleep(Long.MAX_VALUE);
 
             cluster.killTopology("twitch-sentiment-topology");

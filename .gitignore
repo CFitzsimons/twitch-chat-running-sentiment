@@ -40,3 +40,4 @@ build/
 
 ### DB ###
 db/data/
+sentiment-service/

@@ -24,6 +24,10 @@ public class TwitchMessageSpout extends BaseRichSpout {
     private String oauthToken;
     private String channel;
 
+    public TwitchMessageSpout(String channel) {
+        this.channel = channel;
+    }
+
     private transient Socket socket;
     private transient BufferedReader reader;
     private transient BufferedWriter writer;
@@ -49,7 +53,6 @@ public class TwitchMessageSpout extends BaseRichSpout {
         // Read configuration
         this.username = (String) conf.get("twitch.username");
         this.oauthToken = (String) conf.get("twitch.oauthToken");
-        this.channel = (String) conf.get("twitch.channel");
 
         if (username == null || oauthToken == null || channel == null) {
             throw new RuntimeException("Twitch config missing: twitch.username, twitch.oauthToken, twitch.channel are all required");
