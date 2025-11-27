@@ -1,0 +1,2 @@
+docker cp target/twitch-storm-sentiment-1.0-SNAPSHOT.jar nimbus:/apache-storm/twitch-storm-sentiment.jar
+docker exec -it nimbus storm jar apache-storm/twitch-storm-sentiment.jar twitch.sentiment.TwitchSentimentTopology twitch-sentiment-topology
