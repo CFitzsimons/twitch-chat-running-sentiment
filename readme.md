@@ -9,6 +9,12 @@ This project consists of the following:
 
 There's a full writeup that will be included _after_ the grades have been released to ensure the work is not copied.  It will contain a full explanation of the motivations behind this project.
 
+I've also included an example CSV which shows the kind of data that the pipeline will produce, that is visible here:
+
+- [example_of_processed_data.csv](example_of_processed_data.csv)
+
+This just contains 7,000~ records gathered during a brief run of the pipeline.
+
 ## Architecture
 
 ![Architecture Diagram](images/storm-architecture.png)
